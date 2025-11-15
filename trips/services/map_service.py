@@ -13,7 +13,12 @@ class MapServiceError(Exception):
 def _nominatim_geocode(query: str):
     url = "https://nominatim.openstreetmap.org/search"
     params = {"q": query, "format": "json", "limit": 1}
-    headers = {"User-Agent": USER_AGENT}
+    
+    headers = {
+        "User-Agent": "TruckyApp/1.0 (contact: your-email@gmail.com)",
+        "Accept-Language": "en",
+        "Referer": "https://trucky.onrender.com"  # required for cloud servers
+    }
 
     try:
         r = requests.get(url, params=params, headers=headers, timeout=15)
@@ -29,7 +34,6 @@ def _nominatim_geocode(query: str):
 
     except Exception as e:
         raise MapServiceError(f"Geocode error: {e}")
-
 
 
 def _osrm_route(start_latlon, end_latlon):
