@@ -18,7 +18,15 @@ load_dotenv(dotenv_path=env_path, override=True)
 SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-secret-key")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 ALLOWED_HOSTS = ["*"]
-CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com','http://127.0.0.1:8000']
+CSRF_TRUSTED_ORIGINS = ["https://trucky.onrender.com","http://localhost:3000"]
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://roadmap-app-co73.onrender.com", "http://localhost:5173"
+# ]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "trucky-mu.vercel.app",
+]
 
 
 # Application definition
