@@ -1,6 +1,8 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import dj_database_url
+
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,6 +18,7 @@ load_dotenv(dotenv_path=env_path, override=True)
 SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-secret-key")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 ALLOWED_HOSTS = ["*"]
+CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com','http://127.0.0.1:8000']
 
 
 # Application definition
@@ -80,7 +83,7 @@ ASGI_APPLICATION = "trucky.asgi.application"
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='',
+        default='postgresql://trucky_user:GmKx8mOfgV0265oKJoi1jHgMqA8gUAkX@dpg-d4carmfdiees7390ltd0-a.oregon-postgres.render.com/trucky',
         conn_max_age=600
     )
 }
