@@ -29,7 +29,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "trucky-mu.vercel.app",
+    "https://trucky-mu.vercel.app",
 ]
 
 
