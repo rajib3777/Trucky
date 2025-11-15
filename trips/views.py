@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
+from django.http import JsonResponse
 from .serializers import TripInputSerializer
 from .models import Trip
 from .services.map_service import generate_route_map
@@ -71,4 +71,7 @@ class TripPlanView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+def ping(request):
+    return JsonResponse({"status": "ok", "message": "Alive"})
 
