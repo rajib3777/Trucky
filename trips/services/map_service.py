@@ -1,69 +1,76 @@
-
 import requests
+import time
 
-
-USER_AGENT = "trucky-backend/1.0 (contact@example.com)"
+USER_AGENT = "TruckyApp/1.0 (contact: your-email@gmail.com)"
+OSRM_URL = "https://router.project-osrm.org"
 
 
 class MapServiceError(Exception):
-    """Raised when routing / geocoding fails."""
+    pass
 
 
-
-def _nominatim_geocode(query: str):
+def _nominatim_geocode(query):
     url = "https://nominatim.openstreetmap.org/search"
     params = {"q": query, "format": "json", "limit": 1}
-    
     headers = {
-        "User-Agent": "TruckyApp/1.0 (contact: your-email@gmail.com)",
+        "User-Agent": USER_AGENT,
         "Accept-Language": "en",
-        "Referer": "https://trucky.onrender.com"  # required for cloud servers
     }
 
-    try:
-        r = requests.get(url, params=params, headers=headers, timeout=15)
-        r.raise_for_status()
-        data = r.json()
+    # Retry logic for Render slow network
+    for attempt in range(4):
+        try:
+            r = requests.get(url, params=params, headers=headers, timeout=10)
+            r.raise_for_status()
+            data = r.json()
 
-        if not data:
-            raise MapServiceError(f"Nominatim: No result for '{query}'")
+            if data:
+                return (float(data[0]["lat"]), float(data[0]["lon"]))
 
-        lat = float(data[0]["lat"])
-        lon = float(data[0]["lon"])
-        return (lat, lon)
+        except Exception:
+            time.sleep(1.5)  # wait & retry
 
-    except Exception as e:
-        raise MapServiceError(f"Geocode error: {e}")
+    # Fallback to fixed geocode (never fail)
+    fallback = {
+        "dhaka": (23.8103, 90.4125),
+        "chittagong": (22.3569, 91.7832),
+        "new york": (40.7128, -74.0060),
+        "brooklyn": (40.6782, -73.9442),
+        "manhattan": (40.7831, -73.9712),
+        "los angeles": (34.0522, -118.2437),
+        "chicago": (41.8781, -87.6298),
+    }
+
+    key = query.lower().strip()
+    if key in fallback:
+        return fallback[key]
+
+    raise MapServiceError(f"Geocode failed permanently for {query}")
+
 
 
 def _osrm_route(start_latlon, end_latlon):
     slat, slon = start_latlon
     dlat, dlon = end_latlon
 
-    url = f"https://router.project-osrm.org/route/v1/driving/{slon},{slat};{dlon},{dlat}"
-    params = {
-        "overview": "full",
-        "geometries": "geojson",
-        "alternatives": "false"
-    }
+    url = f"{OSRM_URL}/route/v1/driving/{slon},{slat};{dlon},{dlat}"
+    params = {"overview": "full", "geometries": "geojson"}
 
     try:
-        r = requests.get(url, params=params, timeout=30)
+        r = requests.get(url, params=params, timeout=15)
         r.raise_for_status()
         data = r.json()
 
         routes = data.get("routes") or []
         if not routes:
-            raise MapServiceError("OSRM: No route found")
+            raise MapServiceError("OSRM returned no route")
 
         route = routes[0]
 
-        # Convert distances/durations
-        distance_miles = route["distance"] / 1609.34      # meters → miles
-        duration_hours = route["duration"] / 3600.0       # seconds → hours
+        distance_miles = route["distance"] / 1609.34
+        duration_hours = route["duration"] / 3600.0
 
-        # Convert coords → [lat, lon]
-        coords = route["geometry"]["coordinates"]
+        coords = route["geometry"]["coordinates"]  # [lon,lat]
         route_latlon = [[c[1], c[0]] for c in coords]
 
         return distance_miles, duration_hours, route_latlon
@@ -72,16 +79,15 @@ def _osrm_route(start_latlon, end_latlon):
         raise MapServiceError(f"OSRM error: {e}")
 
 
-# 
 
 def _assemble(distance_miles, duration_hours, route, pickup, dropoff):
     mid_index = len(route) // 2
-    map_center = route[mid_index]
+    center = route[mid_index]
 
     stops = [
         {"pos": route[0], "label": f"Pickup: {pickup}"},
-        {"pos": map_center, "label": "Midpoint"},
-        {"pos": route[-1], "label": f"Dropoff: {dropoff}"}
+        {"pos": center, "label": "Midpoint"},
+        {"pos": route[-1], "label": f"Dropoff: {dropoff}"},
     ]
 
     return {
@@ -90,25 +96,20 @@ def _assemble(distance_miles, duration_hours, route, pickup, dropoff):
         "mapInfo": {
             "route": route,
             "stops": stops,
-            "mapCenter": map_center
-        }
+            "mapCenter": center,
+        },
     }
 
 
 
-
-def generate_route_map(pickup: str, dropoff: str):
+def generate_route_map(pickup, dropoff):
     try:
-        # 1) Geocode both points
-        s_latlon = _nominatim_geocode(pickup)
-        e_latlon = _nominatim_geocode(dropoff)
+        start = _nominatim_geocode(pickup)
+        end = _nominatim_geocode(dropoff)
 
-        # 2) Get route from OSRM
-        distance, duration, route = _osrm_route(s_latlon, e_latlon)
+        distance, duration, route = _osrm_route(start, end)
 
-        # 3) Create output for frontend
         return _assemble(distance, duration, route, pickup, dropoff)
 
     except Exception as exc:
-        # Clear descriptive error for debugging
         raise MapServiceError(f"Route generation failed: {exc}")
