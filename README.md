@@ -7,6 +7,21 @@ This project simulates how US-based trucking companies manage daily logs, duty s
 
 ---
 
+## ⚠️ Render Deployment Notice (Cold Start Delay)
+
+This project uses **Render** to host the Django backend.  
+Render free tier services go into **sleep mode** after some inactivity.
+
+### ⏳ First Request Delay
+When the backend is inactive for a while, Render performs a **cold start** which causes:
+
+- The **first request** to take **20–40 seconds**
+- API endpoints appearing to “load” or “hang” temporarily
+- Frontend showing “Generating log…” for longer than usual
+
+### ✔ How to Check If Backend Is Awake
+Before testing API routes, open the backend URL in your browser:
+
 ## 1. Live Deployment
 
 ### Frontend (React + Vercel)
